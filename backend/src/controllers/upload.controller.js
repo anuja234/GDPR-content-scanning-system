@@ -21,7 +21,7 @@ const allowedMimeTypes = [
 
 const storage = multer.diskStorage({
 
-  destination: "storage/temp_files",
+  destination: "../storage/temp_file",
 
   filename: (req, file, cb) => {
 
@@ -69,77 +69,52 @@ exports.uploadMiddleware = upload.single("file");
 /* ---------------- TEXT SCAN ---------------- */
 
 exports.scanText = async (req, res) => {
-
   try {
+    // Extract text AND ruleIds from the new UI request
+    const { text, ruleIds } = req.body;
 
-    const { text } = req.body;
-
+    // Forward ruleIds to your Python Scanning Engine (8001)
     const response = await axios.post(
-      "http://localhost:8000/scan-text",
-      { text }
+      "http://localhost:8001/scan-text",
+      { text, ruleIds } 
     );
 
     const redactedText = response.data.redactedText || "";
     const rawViolations = response.data.violations || [];
-
     const violations = normalizeViolations(rawViolations);
 
     const scanResult = await pool.query(
-      `
-      INSERT INTO scans (scan_type, redacted_content)
-      VALUES ($1,$2)
-      RETURNING id
-      `,
+      `INSERT INTO scans (scan_type, redacted_content) VALUES ($1,$2) RETURNING id`,
       ["TEXT", redactedText]
     );
 
     const scanId = scanResult.rows[0].id;
-
     await storeViolations(scanId, violations);
 
-    res.json({
-      scanId,
-      redactedText,
-      violations
-    });
+    res.json({ scanId, redactedText, violations });
 
   } catch (err) {
-
     console.error("TEXT SCAN ERROR:", err);
-
-    res.status(500).json({
-      error: "Text scan failed"
-    });
-
+    res.status(500).json({ error: "Text scan failed" });
   }
-
 };
 
 /* ---------------- FILE SCAN ---------------- */
-
 exports.scanFile = async (req, res) => {
-
   try {
-
     if (!req.file) {
-
-      return res.status(400).json({
-        error: "No file uploaded"
-      });
-
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
-    console.log("FILE RECEIVED:", req.file.originalname);
-
+    // ruleIds is sent as a stringified array in FormData
+    const ruleIds = req.body.ruleIds ? JSON.parse(req.body.ruleIds) : [];
     const filePath = req.file.path;
 
     const formData = new FormData();
-
-    formData.append(
-      "file",
-      fs.createReadStream(filePath),
-      req.file.originalname
-    );
+    formData.append("file", fs.createReadStream(filePath), req.file.originalname);
+    
+    // Forward the specific rules to the scanning engine
+    formData.append("ruleIds", JSON.stringify(ruleIds));
 
     const response = await axios.post(
       "http://localhost:8001/scan-file",
@@ -149,67 +124,30 @@ exports.scanFile = async (req, res) => {
 
     const redactedText = response.data.redactedText || "";
     const rawViolations = response.data.violations || [];
-
     const violations = normalizeViolations(rawViolations);
 
-    /* ---------------- SAVE FILE METADATA ---------------- */
-
+    // Save File Metadata
     const fileInsert = await pool.query(
-      `
-      INSERT INTO files
-      (user_id, filename, file_type, file_size)
-      VALUES ($1,$2,$3,$4)
-      RETURNING id
-      `,
-      [
-        1,
-        req.file.originalname,
-        path.extname(req.file.originalname),
-        req.file.size
-      ]
+      `INSERT INTO files (user_id, filename, file_type, file_size) VALUES ($1,$2,$3,$4) RETURNING id`,
+      [1, req.file.filename, path.extname(req.file.originalname), req.file.size]
     );
-
     const fileId = fileInsert.rows[0].id;
 
-    /* ---------------- CREATE SCAN ---------------- */
-
+    // Create Scan Record
     const scanResult = await pool.query(
-      `
-      INSERT INTO scans
-      (file_id, scan_type, redacted_content)
-      VALUES ($1,$2,$3)
-      RETURNING id
-      `,
-      [
-        fileId,
-        "FILE",
-        redactedText
-      ]
+      `INSERT INTO scans (file_id, scan_type, redacted_content) VALUES ($1,$2,$3) RETURNING id`,
+      [fileId, "FILE", redactedText]
     );
 
     const scanId = scanResult.rows[0].id;
-
-    /* ---------------- STORE VIOLATIONS ---------------- */
-
     await storeViolations(scanId, violations);
 
-    res.json({
-      scanId,
-      fileId,
-      redactedText,
-      violations
-    });
+    res.json({ scanId, fileId, redactedText, violations });
 
   } catch (err) {
-
     console.error("FILE SCAN ERROR:", err.message);
-
-    res.status(400).json({
-      error: err.message
-    });
-
+    res.status(400).json({ error: err.message });
   }
-
 };
 
 /* ---------------- NORMALIZE VIOLATIONS ---------------- */

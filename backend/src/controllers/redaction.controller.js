@@ -59,10 +59,15 @@ exports.generateRedactedFile = async (req, res) => {
       [redactedPath, filename]
     );
 
-    const absolutePath = path.resolve(redactedPath);
+    const absolutePath = path.join(process.cwd(), "..", redactedPath);
 
-    res.download(absolutePath);
-
+    console.log("2. Target Path from AI:", redactedPath);
+    console.log("3. FINAL ATTEMPT PATH:", absolutePath);
+    res.download(absolutePath, (err) => {
+      if (err) {
+        console.error("DOWNLOAD ERROR:", err);
+      }
+    });
   }
   catch (err) {
 

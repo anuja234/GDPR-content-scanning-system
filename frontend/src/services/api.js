@@ -6,13 +6,11 @@ const api = axios.create({
 
 export default api;
 
-
 /* ---------- SCAN APIs ---------- */
 
-export const scanTextAPI = (text) => {
-  return api.post("/scan-text", { text });
+export const scanTextAPI = (text, ruleIds) => {
+  return api.post("/scan-text", { text, ruleIds });
 };
-
 
 export const scanFileAPI = (formData) => {
   return api.post("/scan-file", formData, {
@@ -21,7 +19,6 @@ export const scanFileAPI = (formData) => {
     }
   });
 };
-
 
 /* ---------- SCAN HISTORY ---------- */
 
@@ -36,13 +33,11 @@ export const fetchViolationsAPI = (scanId) => {
 };
 
 /* ---------- Violation MANAGEMENT ---------- */
-export const updateViolationAPI = (id,action) => {
-  
+export const updateViolationAPI = (id, action) => {
   return api.patch(
     `/api/violations/${id}/action`,
     { action }
   );
-  
 };
 
 /* ---------- RULE MANAGEMENT ---------- */
@@ -55,17 +50,17 @@ export const searchRulesAPI = (query) => {
   return api.get(`/api/rules/search?query=${query}`);
 };
 
-
 export const addRuleAPI = (data) => {
   return api.post("/api/rules", data);
 };
-
 
 export const toggleRuleAPI = (id) => {
   return api.patch(`/api/rules/${id}/toggle`);
 };
 
-
 export const deleteRuleAPI = (id) => {
   return api.delete(`/api/rules/${id}`);
 };
+
+/* ----------  Update Rule ---------- */
+export const updateRuleAPI = (id, data) => api.put(`/api/rules/${id}`, data);

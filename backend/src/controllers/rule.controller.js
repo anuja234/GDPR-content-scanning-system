@@ -113,6 +113,54 @@ exports.toggleRule = async (req, res) => {
   }
 };
 
+/* -------- UPDATE RULE (The NEW Edit Logic) -------- */
+exports.updateRule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rule_name, regex_pattern, severity, category, description } = req.body;
+
+    const result = await pool.query(
+      `UPDATE rules 
+       SET rule_name = $1, 
+           regex_pattern = $2, 
+           severity = $3, 
+           category = $4, 
+           description = $5
+       WHERE id = $6 
+       RETURNING *`,
+      [rule_name, regex_pattern, severity, category, description || "", id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Rule not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("UPDATE RULE ERROR:", err);
+    res.status(500).json({ error: "Failed to update rule" });
+  }
+};
+
+/* -------- ENABLE / DISABLE RULE -------- */
+exports.toggleRule = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `UPDATE rules
+       SET enabled = NOT enabled
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("TOGGLE RULE ERROR:", err);
+    res.status(500).json({ error: "Failed to update rule" });
+  }
+};
 
 
 /* -------- DELETE RULE -------- */

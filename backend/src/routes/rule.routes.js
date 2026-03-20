@@ -15,5 +15,7 @@ router.patch("/rules/:id/toggle", ruleController.toggleRule);
 
 router.delete("/rules/:id", ruleController.deleteRule);
 
+router.put('/rules/:id', ruleController.updateRule);
+
 
 module.exports = router;
