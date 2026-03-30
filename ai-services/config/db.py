@@ -1,34 +1,17 @@
+import os
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def get_db_connection():
-
     conn = psycopg2.connect(
-        host="localhost",
-        database="gdpr_db",
-        user="pranitkolhe",
-        password="",
-
+        host=os.getenv("DB_HOST"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        port=os.getenv("DB_PORT")
     )
-
     return conn
 
 
-def fetch_enabled_rules():
-
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-
-    cur.execute("""
-        SELECT id, rule_name, regex_pattern
-        FROM rules
-        WHERE enabled = TRUE
-    """)
-
-    rules = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    return rules

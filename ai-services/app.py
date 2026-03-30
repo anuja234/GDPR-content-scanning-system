@@ -10,7 +10,7 @@ import os
 
 from services.pii_detector import detect_pii, redact_text
 from services.file_redactor import generate_redacted_file
-from db import get_db_connection
+from config.db import get_db_connection
 
 
 app = FastAPI()
